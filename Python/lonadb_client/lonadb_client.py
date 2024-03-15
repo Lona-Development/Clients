@@ -1,5 +1,9 @@
 import json
 import socket
+import random
+import hashlib
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 
 class LonaDB:
     def __init__(self, host, port, name, password):
@@ -9,27 +13,40 @@ class LonaDB:
         self.password = password
 
     def make_id(self, length):
-        import random
-        import string
-        return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+        characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz'
+        return ''.join(random.choice(characters) for _ in range(length))
 
-    def send_request(self, action, data):
+    async def send_request(self, action, data):
         process_id = self.make_id(5)
+        encryption_key = hashlib.sha256(process_id.encode()).digest().hex()
+
+        if action == "create_user":
+            data["user"]["password"] = await self.encrypt_password(data["user"]["password"], encryption_key)
+        elif action == "check_password":
+            data["checkPass"]["pass"] = await self.encrypt_password(data["checkPass"]["pass"], encryption_key)
+
+        encrypted_password = await self.encrypt_password(self.password, encryption_key)
+
         request = json.dumps({
-            'action': action,
-            'login': {
-                'name': self.name,
-                'password': self.password
+            "action": action,
+            "login": {
+                "name": self.name,
+                "password": encrypted_password
             },
-            'process': process_id,
+            "process": process_id,
             **data
         })
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self.host, self.port))
+        with socket.create_connection((self.host, self.port)) as s:
             s.sendall(request.encode())
-            response = s.recv(4096).decode()
+            response = s.recv(1024).decode()
             return json.loads(response)
+
+    async def encrypt_password(self, password, key):
+        iv = get_random_bytes(16)
+        cipher = AES.new(key.encode(), AES.MODE_CBC, iv)
+        encrypted = cipher.encrypt(password.encode())
+        return iv.hex() + ':' + encrypted.hex()
 
     def create_function(self, name, content):
         data = {

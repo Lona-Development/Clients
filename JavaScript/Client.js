@@ -27,6 +27,15 @@ class LonaDB {
 
         let encryptionKey = crypto.createHash('sha256').update(processID).digest('base64');
 
+        switch(action){
+            case "create_user":
+                data.user.password = await this.encryptPassword(data.user.password, encryptionKey);
+                break;
+            case "check_password":
+                data.checkPass.pass = await this.encryptPassword(data.checkPass.pass, encryptionKey);
+                break;
+        }
+
         let encryptedPassword = await this.encryptPassword(this.password, encryptionKey);
 
         let request = JSON.stringify({
@@ -62,7 +71,6 @@ class LonaDB {
             });
         });
     }
-
 
     encryptPassword(password, key) {
         const iv = crypto.randomBytes(16);

@@ -50,6 +50,15 @@ class LonaDB {
     }
 
     $processID = $this->makeid(5);
+
+    switch($action){
+      case "create_user":
+        $data['user']['password'] = $this->encryptPassword($data['user']['password'], $processID);
+        break;
+      case "check_password":
+        $data['checkPass']['pass'] = $this->encryptPassword($data['checkPass']['pass'], $processID);
+        break;
+    }
 		
 		$encryptedPassword = $this->encryptPassword($this->password, $processID);
 

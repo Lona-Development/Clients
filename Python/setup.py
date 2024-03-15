@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="lonadb-client",
-    version="2.1",
+    version="2.2",
     author="Collin Buchkamer",
     author_email="collin@lona-development.org",
     description="A client library for interacting with LonaDB server",
@@ -27,4 +27,7 @@ setup(
     ],
     keywords="lonadb client database",
     platforms="any",
+    install_requires=[
+        "pycryptodome>=3.10.1"
+    ]
 )
