@@ -73,9 +73,9 @@ The following methods are available in the `LonaDB` Java Client:
 - `removePermission(user, permission)`: Removes a permission from a user.
 - `getPermissionsRaw(name)`: Retrieves the raw permission data for a user.
 - `addPermission(user, permission)`: Adds a permission to a user.
-- `createFunction(name, content)`: Create a function which can be executed whenever you want. Just like eval. Content = string of Java code.
+- `createFunction(name, content)`: Create a function which can be executed whenever you want. Just like eval. Content = string of PHP Code.
 - `executeFunction(name)`: Executes the function.
-- `eval(function)`: Runs the function (must be a string of Java code).
+- `eval(function)`: Runs the function (must be a string of PHP Code).
 
 ## License
 
