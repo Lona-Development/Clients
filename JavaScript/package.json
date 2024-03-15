@@ -1,0 +1,25 @@
+{
+  "name": "lonadb-client",
+  "version": "4.5.1",
+  "description": "A client for the LonaDB Prototype",
+  "main": "Client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LonaDB/JavaScript-Client"
+  },
+  "keywords": [
+    "database",
+    "lonadb",
+    "json",
+    "variable",
+    "variables"
+  ],
+  "author": "Collin Buchkamer",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "net": "^1.0.2"
+  }
+}
