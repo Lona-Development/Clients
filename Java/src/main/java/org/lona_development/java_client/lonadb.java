@@ -6,13 +6,13 @@ import javax.crypto.*;
 import javax.crypto.spec.*;
 import java.security.*;
 
-public class LonaDB {
+public class lonadb {
     private String host;
     private int port;
     private String name;
     private String password;
 
-    public LonaDB(String host, int port, String name, String password) {
+    public lonadb(String host, int port, String name, String password) {
         this.host = host;
         this.port = port;
         this.name = name;
