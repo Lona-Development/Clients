@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 class LonaDB {
     constructor(host, port, name, password) {
+        //Import all connection details
         this.host = host;
         this.port = port;
         this.name = name;
@@ -12,21 +13,21 @@ class LonaDB {
         let result = '';
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz';
         let counter = 0;
-
+        //Add random characters to result until it has reached the desired length
         while (counter < length) {
             result += characters[Math.floor(Math.random() * characters.length)];
             counter += 1;
         }
-
         return result;
     }
 
     sendRequest = async function(action, data) {
         let net = require('net');
+        //Generate ProcessID
         let processID = this.makeid(5);
-
+        //Generate encryptionKey for encrypting passwords
         let encryptionKey = crypto.createHash('sha256').update(processID).digest('base64');
-
+        //Check if we need to encrypt something other than our own password
         switch(action){
             case "create_user":
                 data.user.password = await this.encryptPassword(data.user.password, encryptionKey);
@@ -35,9 +36,9 @@ class LonaDB {
                 data.checkPass.pass = await this.encryptPassword(data.checkPass.pass, encryptionKey);
                 break;
         }
-
+        //Encrypt password
         let encryptedPassword = await this.encryptPassword(this.password, encryptionKey);
-
+        //Generate request
         let request = JSON.stringify({
             action,
             login: {
@@ -49,19 +50,21 @@ class LonaDB {
         });
 
         return new Promise((resolve, reject) => {
+            //Create socket
             let socket = net.createConnection({
                 host: this.host,
                 port: this.port
             }, () => {
+                //Send request
                 socket.write(request);
             });
 
             let response = '';
-
+            //When server sends data, collect it
             socket.on('data', (chunk) => {
                 response += chunk;
             });
-
+            //Once the server closes the connection, return the data
             socket.on('end', () => {
                 resolve(JSON.parse(response));
             });
@@ -73,23 +76,26 @@ class LonaDB {
     }
 
     encryptPassword(password, key) {
+        //Generate IV and create cipher
         const iv = crypto.randomBytes(16);
         const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key, 'base64'), iv);
-    
+        //Encrypt
         let encrypted = cipher.update(password);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
-    
+        //Return IV and encrypted value
         return iv.toString('hex') + ':' + encrypted.toString('hex');
     }
     
+    //All other functions work the same
     createFunction(name, content) {
+        //Generate request to send
         const data = {
           "function": {
             "name": name,
             "content": content
           }
         };
-    
+        //Send request to the database and return the response
         return this.sendRequest("add_function", data);
     }
         

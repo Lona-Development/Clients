@@ -6,11 +6,11 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="lonadb-client",
-    version="2.2",
-    author="Collin Buchkamer",
+    version="2.3",
+    author="Lona-Development",
     author_email="collin@lona-development.org",
     description="A client library for interacting with LonaDB server",
-    url="https://github.com/LonaDB/Clients",
+    url="https://git.lona-development.org/Lona-Development/Clients",
     packages=["lonadb_client"],
     long_description=long_description,
     long_description_content_type='text/markdown',

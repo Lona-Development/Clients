@@ -1,12 +1,14 @@
 <?php
 
 class LonaDB {
+  //Create all needed variables
   private $host;
   private $port;
   private $name;
   private $password;
 
   public function __construct($host, $port, $name, $password) {
+    //Import all connection details
     $this->host = $host;
     $this->port = $port;
     $this->name = $name;
@@ -17,40 +19,38 @@ class LonaDB {
     $result = "";
     $characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz";
     $counter = 0;
-
+    //Add random characters from $characters to $result until it has reached the dired lenght
     while ($counter < $length) {
       $result .= $characters[mt_rand(0, strlen($characters) - 1)];
       $counter += 1;
     }
-
     return $result;
   }
 	
 	private function encryptPassword($password, $key) {
+    //Hash our encryption key (ProcessID)
     $keyBuffer = hash('sha256', $key, true);
-
+    //Generate IV
     $iv = openssl_random_pseudo_bytes(16);
-
+    //Encrypt
     $encrypted = openssl_encrypt($password, 'aes-256-cbc', $keyBuffer, OPENSSL_RAW_DATA, $iv);
-
+    //Add the IV to the encrypted value
     $encryptedString = bin2hex($iv) . ':' . bin2hex($encrypted);
-
     return $encryptedString;
   }
 
   private function sendRequest($action, $data) {
+    //Create socket
     $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-    if ($socket === false) {
-      return ["err" => socket_strerror(socket_last_error())];
-    }
-
+    //Check if socket was created successfully
+    if (!$socket) return ["err" => socket_strerror(socket_last_error())];
+    //Try connecting to the database
     $result = socket_connect($socket, $this->host, $this->port);
-    if ($result === false) {
-      return ["err" => socket_strerror(socket_last_error($socket))];
-    }
-
+    //Check if connection was successfull
+    if (!$result) return ["err" => socket_strerror(socket_last_error($socket))];
+    //Generate ProcessID
     $processID = $this->makeid(5);
-
+    //Check if we need to encrypt something other than our own password
     switch($action){
       case "create_user":
         $data['user']['password'] = $this->encryptPassword($data['user']['password'], $processID);
@@ -59,9 +59,9 @@ class LonaDB {
         $data['checkPass']['pass'] = $this->encryptPassword($data['checkPass']['pass'], $processID);
         break;
     }
-		
+		//Encrypt password
 		$encryptedPassword = $this->encryptPassword($this->password, $processID);
-
+    //Generate request array
     $request = json_encode([
       "action" => $action,
       "login" => [
@@ -70,23 +70,26 @@ class LonaDB {
       ],
       "process" => $processID
     ] + $data);
-
+    //Send request to database
     socket_write($socket, $request, strlen($request));
-
+    //Read response form database
     $response = socket_read($socket, 2048);
+    //Close socket
     socket_close($socket);
-
+    //Give back the response
     return json_decode($response, true);
   }
-	
+
+	//All other functions work the same
 	public function createFunction($name, $content) {
+    //Generate request to send to the database
     $data = [
       "function" => [
 				"name" => $name,
 				"content" => $content
       ]
     ];
-
+    //Send request to the database and return the response
     return $this->sendRequest("add_function", $data);
   }
 	

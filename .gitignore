@@ -4,4 +4,4 @@ Python/venv
 Python/dist
 Python/buildc
 Python/lonadb_client.egg-info
-token
+Python/token
