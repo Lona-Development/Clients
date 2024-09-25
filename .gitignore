@@ -1,5 +1,6 @@
 JavaScript/node_modules
 Java/target
+Java/.m2
 Python/venv
 Python/dist
 Python/buildc

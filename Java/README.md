@@ -9,7 +9,7 @@ You can use the LonaDB Java Client by adding it as a dependency in your Maven pr
     <repository>
         <id>github</id>
         <name>GitHub Packages</name>
-        <url>https://maven.pkg.github.com/LonaDB/Clients</url>
+        <url>https://maven.pkg.github.com/Lona-Development/Clients</url>
     </repository>
 </repositories>
 ```
