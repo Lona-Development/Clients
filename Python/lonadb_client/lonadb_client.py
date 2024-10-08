@@ -1,174 +1,220 @@
-import json
 import socket
-import random
+import json
 import hashlib
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+import os
+import asyncio
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 
 class LonaDB:
     def __init__(self, host, port, name, password):
-        #Import all connection details
+        # Import connection details
         self.host = host
         self.port = port
         self.name = name
         self.password = password
 
-    def make_id(self, length):
+    def makeid(self, length):
+        # Generate a random string of specified length
         characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyz'
-        #Generate random string of desired lenght
-        return ''.join(random.choice(characters) for _ in range(length))
+        return ''.join(os.urandom(1).decode(errors='ignore') for _ in range(length))
 
     async def send_request(self, action, data):
-        #Generate ProcessID
-        process_id = self.make_id(5)
-        #Generate encryption key for passwords
-        encryption_key = hashlib.sha256(process_id.encode()).digest().hex()
-        #Check if we have to encrypt something else
+        # Generate ProcessID
+        process_id = self.makeid(5)
+        # Generate encryptionKey for encrypting passwords
+        encryption_key = hashlib.sha256(process_id.encode()).digest()
+
+        # Encrypt password if needed
         if action == "create_user":
-            data["user"]["password"] = await self.encrypt_password(data["user"]["password"], encryption_key)
+            data['user']['password'] = self.encrypt_password(data['user']['password'], encryption_key)
         elif action == "check_password":
-            data["checkPass"]["pass"] = await self.encrypt_password(data["checkPass"]["pass"], encryption_key)
-        #Encrypt password
-        encrypted_password = await self.encrypt_password(self.password, encryption_key)
-        #Generate request
-        request = json.dumps({
+            data['checkPass']['pass'] = self.encrypt_password(data['checkPass']['pass'], encryption_key)
+        
+        # Encrypt the login password
+        encrypted_password = self.encrypt_password(self.password, encryption_key)
+        
+        # Create the request data
+        request_data = {
             "action": action,
             "login": {
                 "name": self.name,
                 "password": encrypted_password
             },
-            "process": process_id,
-            **data
-        })
-        #Send request
-        with socket.create_connection((self.host, self.port)) as s:
-            s.sendall(request.encode())
-            response = s.recv(1024).decode()
-            #Return response
-            return json.loads(response)
+            "process": process_id
+        }
+        request_data.update(data)
 
-    async def encrypt_password(self, password, key):
-        #Generate IV and cipher
-        iv = get_random_bytes(16)
-        cipher = AES.new(key.encode(), AES.MODE_CBC, iv)
-        #Encrypt
-        encrypted = cipher.encrypt(password.encode())
-        #Return IV and encrypted value
+        # Convert request data to JSON
+        request_json = json.dumps(request_data)
+
+        # Send request via socket
+        reader, writer = await asyncio.open_connection(self.host, self.port)
+
+        writer.write(request_json.encode())
+        await writer.drain()
+
+        # Read the response from the server
+        response_data = await reader.read(2048)
+        writer.close()
+        await writer.wait_closed()
+
+        # Parse the response and return it
+        return json.loads(response_data.decode())
+
+    def encrypt_password(self, password, key):
+        # Generate IV and create cipher
+        iv = os.urandom(16)
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+
+        # Pad password to block size (16 bytes)
+        padding_length = 16 - len(password) % 16
+        password_padded = password + chr(padding_length) * padding_length
+
+        # Encrypt the password
+        encrypted = encryptor.update(password_padded.encode()) + encryptor.finalize()
+
+        # Return IV and encrypted password
         return iv.hex() + ':' + encrypted.hex()
 
-    #All other functions work the same
-    def create_function(self, name, content):
-        #Generate request to send to the database
+    # All other functions work similarly
+    async def create_function(self, name, content):
         data = {
-            'function': {
-                'name': name,
-                'content': content
+            "function": {
+                "name": name,
+                "content": content
             }
         }
-        #Send request to the database and return the response
-        return self.send_request('add_function', data)
+        return await self.send_request("add_function", data)
 
-    def execute_function(self, name):
-        data = {'name': name}
-        return self.send_request('execute_function', data)
-
-    def get_tables(self, user):
-        data = {'user': user}
-        return self.send_request('get_tables', data)
-
-    def get_table_data(self, table):
-        data = {'table': table}
-        return self.send_request('get_table_data', data)
-
-    def delete_table(self, table):
-        data = {'table': {'name': table}}
-        return self.send_request('delete_table', data)
-
-    def create_table(self, table):
-        data = {'table': {'name': table}}
-        return self.send_request('create_table', data)
-
-    def set_variable(self, table, name, value):
+    async def execute_function(self, name):
         data = {
-            'table': {'name': table},
-            'variable': {
-                'name': name,
-                'value': value
+            "name": name
+        }
+        return await self.send_request("execute_function", data)
+
+    async def delete_function(self, name):
+        data = {
+            "function": {
+                "name": name
             }
         }
-        return self.send_request('set_variable', data)
+        return await self.send_request("delete_function", data)
 
-    def remove_variable(self, table, name):
+    async def get_tables(self, user):
         data = {
-            'table': {'name': table},
-            'variable': {'name': name}
+            "user": user
         }
-        return self.send_request('remove_variable', data)
+        return await self.send_request("get_tables", data)
 
-    def get_variable(self, table, name):
+    async def get_table_data(self, table):
         data = {
-            'table': {'name': table},
-            'variable': {'name': name}
+            "table": table
         }
-        return self.send_request('get_variable', data)
+        return await self.send_request("get_table_data", data)
 
-    def get_users(self):
+    async def delete_table(self, table):
+        data = {
+            "table": {"name": table}
+        }
+        return await self.send_request("delete_table", data)
+
+    async def create_table(self, table):
+        data = {
+            "table": {"name": table}
+        }
+        return await self.send_request("create_table", data)
+
+    async def set(self, table, name, value):
+        data = {
+            "table": {"name": table},
+            "variable": {
+                "name": name,
+                "value": value
+            }
+        }
+        return await self.send_request("set_variable", data)
+
+    async def delete(self, table, name):
+        data = {
+            "table": {"name": table},
+            "variable": {"name": name}
+        }
+        return await self.send_request("remove_variable", data)
+
+    async def get(self, table, name):
+        data = {
+            "table": {"name": table},
+            "variable": {"name": name}
+        }
+        return await self.send_request("get_variable", data)
+
+    async def get_users(self):
         data = {}
-        return self.send_request('get_users', data)
+        return await self.send_request("get_users", data)
 
-    def create_user(self, name, password):
+    async def create_user(self, name, passw):
         data = {
-            'user': {
-                'name': name,
-                'password': password
+            "user": {
+                "name": name,
+                "password": passw
             }
         }
-        return self.send_request('create_user', data)
+        return await self.send_request("create_user", data)
 
-    def delete_user(self, name):
-        data = {'user': {'name': name}}
-        return self.send_request('delete_user', data)
-
-    def check_password(self, name, password):
+    async def delete_user(self, name):
         data = {
-            'checkPass': {
-                'name': name,
-                'pass': password
+            "user": {
+                "name": name
             }
         }
-        return self.send_request('check_password', data)
+        return await self.send_request("delete_user", data)
 
-    def check_permission(self, name, permission):
+    async def check_password(self, name, passw):
         data = {
-            'permission': {
-                'user': name,
-                'name': permission
+            "checkPass": {
+                "name": name,
+                "pass": passw
             }
         }
-        return self.send_request('check_permission', data)
+        return await self.send_request("check_password", data)
 
-    def remove_permission(self, name, permission):
+    async def check_permission(self, name, permission):
         data = {
-            'permission': {
-                'user': name,
-                'name': permission
+            "permission": {
+                "user": name,
+                "name": permission
             }
         }
-        return self.send_request('remove_permission', data)
+        return await self.send_request("check_permission", data)
 
-    def get_permissions_raw(self, name):
-        data = {'user': name}
-        return self.send_request('get_permissions_raw', data)
-
-    def add_permission(self, name, permission):
+    async def remove_permission(self, name, permission):
         data = {
-            'permission': {
-                'user': name,
-                'name': permission
+            "permission": {
+                "user": name,
+                "name": permission
             }
         }
-        return self.send_request('add_permission', data)
+        return await self.send_request("remove_permission", data)
 
-    def eval(self, func):
-        data = {'function': func}
-        return self.send_request('eval', data)
+    async def get_permissions_raw(self, name):
+        data = {
+            "user": name
+        }
+        return await self.send_request("get_permissions_raw", data)
+
+    async def add_permission(self, name, permission):
+        data = {
+            "permission": {
+                "user": name,
+                "name": permission
+            }
+        }
+        return await self.send_request("add_permission", data)
+
+    async def eval(self, func):
+        data = {
+            "function": func
+        }
+        return await self.send_request("eval", data)

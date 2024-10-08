@@ -101,6 +101,16 @@ class LonaDB {
     return $this->sendRequest("execute_function", $data);
   }
 
+  public function deleteFunction($name) {
+    $data = [
+      "function" => [
+				"name" => $name,
+      ]
+    ];
+
+    return $this->sendRequest("delete_function", $data);
+  }
+
   public function getTables($user) {
     $data = [
       "user" => $user
@@ -233,7 +243,7 @@ class LonaDB {
     return $this->sendRequest("get_permissions_raw", $data);
   }
 
-  public function addPermission($name){
+  public function addPermission($name, $permission){
     $data = [
       "permission" => [
         "user" => $name,

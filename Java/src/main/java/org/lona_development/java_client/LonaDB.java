@@ -1,3 +1,5 @@
+package org.lona_development.client;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -113,6 +115,15 @@ public class LonaDB {
         Map<String, Object> data = new HashMap<>();
         data.put("name", name);
         return sendRequest("execute_function", data);
+    }
+
+    public Map<String, Object> deleteFunction(String name) throws Exception {
+        Map<String, Object> data = new HashMap<>();
+        Map<String, String> functionData = new HashMap<>();
+        functionData.put("name", name);
+        data.put("function", functionData);
+
+        return sendRequest("delete_function", data);
     }
 
     public Map<String, Object> getTables(String user) throws Exception {

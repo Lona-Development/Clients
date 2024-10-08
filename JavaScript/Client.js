@@ -107,6 +107,16 @@ class LonaDB {
         return this.sendRequest("execute_function", data);
     }
 
+    deleteFunction(name) {
+        const data = {
+          "function": {
+            "name": name
+          }
+        };
+    
+        return this.sendRequest("delete_function", data);
+    }
+
     getTables(user) {
         const data = {
             user
